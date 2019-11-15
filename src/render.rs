@@ -209,12 +209,12 @@ impl Renderer {
             .tex_image_3d_with_opt_u8_array(
                 GL::TEXTURE_3D,
                 0,                 // level
-                GL::RGBA as i32,   // internal_format
+                GL::R8UI as i32,   // internal_format
                 WORLD_SIZE as i32, // width
                 WORLD_SIZE as i32, // height
                 WORLD_SIZE as i32, // depth
                 0,                 // border
-                GL::RGBA,          // format
+                GL::RED_INTEGER,   // format
                 GL::UNSIGNED_BYTE, // type
                 Some(data),
             )
@@ -356,7 +356,7 @@ void main() {
 // This is what we want, plus (col_n * d_n). So if col_n is black, this is the correct answer.
 const FRAGMENT_SHADER_SOURCE: &str = r"#version 300 es
 precision mediump float;
-precision mediump sampler3D;
+precision mediump usampler3D;
 
 in vec3 vpos;
 in vec3 vnormal;
@@ -364,15 +364,45 @@ in vec3 vnormal;
 out vec4 color;
 
 uniform vec3 camera_pos;
-uniform sampler3D world;
+uniform usampler3D world;
 uniform float brightness;
 
 const float world_size = 16.0;
 
+vec3 get_color(vec3 pos) {
+    uint num_grains = texture(world, pos / world_size).r;
+
+    if (num_grains == uint(0)) {
+        return vec3(0.0, 0.0, 0.0);
+    }
+
+    if (num_grains == uint(1)) {
+        return vec3(0.0, 0.0, 1.0);
+    }
+
+    if (num_grains == uint(2)) {
+        return vec3(0.0, 0.75, 0.75);
+    }
+
+    if (num_grains == uint(3)) {
+        return vec3(0.0, 1.0, 0.0);
+    }
+
+    if (num_grains == uint(4)) {
+        return vec3(0.75, 0.75, 0.0);
+    }
+
+    if (num_grains == uint(5)) {
+        return vec3(1.0, 0.0, 0.0);
+    }
+
+    return vec3(1.0, 1.0, 1.0);
+}
+
 void main() {
     vec3 n = vnormal * sign(dot(vnormal, vpos - camera_pos)) * 0.5;
-    vec3 near_color = texture(world, (vpos - n) / world_size).rgb;
-    vec3 far_color = texture(world, (vpos + n) / world_size).rgb;
+    vec3 near_color = get_color(vpos - n);
+    vec3 far_color = get_color(vpos + n);
 
     color = vec4(near_color - far_color, 0.0) * distance(vpos, camera_pos) * brightness;
 }

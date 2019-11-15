@@ -141,7 +141,7 @@ impl State {
 
                 if k == "Enter" {
                     model.world.add_sand(vec![([8, 8, 8], 1)]);
-                    model.renderer.set_world_tex(&model.world.to_color_array());
+                    model.renderer.set_world_tex(model.world.to_color_array());
                 }
             }
             Msg::KeyUp(k) => {
@@ -330,7 +330,7 @@ impl Model {
         world.add_sand(vec![([8, 8, 8], 1)]);
 
         let mut renderer = render::Renderer::new(&canvas);
-        renderer.set_world_tex(&world.to_color_array());
+        renderer.set_world_tex(world.to_color_array());
 
         Self {
             animation_frame_closure: JsValue::undefined().into(),
