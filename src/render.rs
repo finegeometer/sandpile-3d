@@ -56,6 +56,9 @@ impl Renderer {
         gl.get_extension("EXT_color_buffer_float")
             .expect_throw("OpenGL extension \"EXT_color_buffer_float\" not found.")
             .expect_throw("OpenGL extension \"EXT_color_buffer_float\" not found.");
+        gl.get_extension("EXT_float_blend")
+            .expect_throw("OpenGL extension \"EXT_float_blend\" not found.")
+            .expect_throw("OpenGL extension \"EXT_float_blend\" not found.");
 
         // Additive Blending
         gl.enable(GL::BLEND);
@@ -82,29 +85,29 @@ impl Renderer {
 
             #[rustfmt::skip]
             for i in 0..=WORLD_SIZE {
-            	data.extend_from_slice(&[
-            		i as f32, 0.               , 0.               , 1., 0., 0.,
-            		i as f32, WORLD_SIZE as f32, 0.               , 1., 0., 0.,
-            		i as f32, WORLD_SIZE as f32, WORLD_SIZE as f32, 1., 0., 0.,
-            		i as f32, WORLD_SIZE as f32, WORLD_SIZE as f32, 1., 0., 0.,
-            		i as f32, 0.               , WORLD_SIZE as f32, 1., 0., 0.,
-            		i as f32, 0.               , 0.               , 1., 0., 0.,
+                data.extend_from_slice(&[
+                    i as f32, 0.               , 0.               , 1., 0., 0.,
+                    i as f32, WORLD_SIZE as f32, 0.               , 1., 0., 0.,
+                    i as f32, WORLD_SIZE as f32, WORLD_SIZE as f32, 1., 0., 0.,
+                    i as f32, WORLD_SIZE as f32, WORLD_SIZE as f32, 1., 0., 0.,
+                    i as f32, 0.               , WORLD_SIZE as f32, 1., 0., 0.,
+                    i as f32, 0.               , 0.               , 1., 0., 0.,
 
-            		0.               , i as f32, 0.               , 0., 1., 0.,
-            		WORLD_SIZE as f32, i as f32, 0.               , 0., 1., 0.,
-            		WORLD_SIZE as f32, i as f32, WORLD_SIZE as f32, 0., 1., 0.,
-            		WORLD_SIZE as f32, i as f32, WORLD_SIZE as f32, 0., 1., 0.,
-            		0.               , i as f32, WORLD_SIZE as f32, 0., 1., 0.,
-            		0.               , i as f32, 0.               , 0., 1., 0.,
+                    0.               , i as f32, 0.               , 0., 1., 0.,
+                    WORLD_SIZE as f32, i as f32, 0.               , 0., 1., 0.,
+                    WORLD_SIZE as f32, i as f32, WORLD_SIZE as f32, 0., 1., 0.,
+                    WORLD_SIZE as f32, i as f32, WORLD_SIZE as f32, 0., 1., 0.,
+                    0.               , i as f32, WORLD_SIZE as f32, 0., 1., 0.,
+                    0.               , i as f32, 0.               , 0., 1., 0.,
 
-            		0.               , 0.               , i as f32, 0., 0., 1.,
-            		WORLD_SIZE as f32, 0.               , i as f32, 0., 0., 1.,
-            		WORLD_SIZE as f32, WORLD_SIZE as f32, i as f32, 0., 0., 1.,
-            		WORLD_SIZE as f32, WORLD_SIZE as f32, i as f32, 0., 0., 1.,
-            		0.               , WORLD_SIZE as f32, i as f32, 0., 0., 1.,
-            		0.               , 0.               , i as f32, 0., 0., 1.,
+                    0.               , 0.               , i as f32, 0., 0., 1.,
+                    WORLD_SIZE as f32, 0.               , i as f32, 0., 0., 1.,
+                    WORLD_SIZE as f32, WORLD_SIZE as f32, i as f32, 0., 0., 1.,
+                    WORLD_SIZE as f32, WORLD_SIZE as f32, i as f32, 0., 0., 1.,
+                    0.               , WORLD_SIZE as f32, i as f32, 0., 0., 1.,
+                    0.               , 0.               , i as f32, 0., 0., 1.,
 
-            	]);
+                ]);
             };
 
             gl.buffer_data_with_array_buffer_view(
@@ -367,11 +370,11 @@ uniform float brightness;
 const float world_size = 16.0;
 
 void main() {
-	vec3 n = vnormal * sign(dot(vnormal, vpos - camera_pos)) * 0.5;
-	vec3 near_color = texture(world, (vpos - n) / world_size).rgb;
-	vec3 far_color = texture(world, (vpos + n) / world_size).rgb;
+    vec3 n = vnormal * sign(dot(vnormal, vpos - camera_pos)) * 0.5;
+    vec3 near_color = texture(world, (vpos - n) / world_size).rgb;
+    vec3 far_color = texture(world, (vpos + n) / world_size).rgb;
 
-	color = vec4(near_color - far_color, 0.0) * distance(vpos, camera_pos) * brightness;
+    color = vec4(near_color - far_color, 0.0) * distance(vpos, camera_pos) * brightness;
 }
 ";
 
@@ -395,8 +398,8 @@ in vec2 coord;
 out vec2 vcoord;
 
 void main() {
-	vcoord = coord;
-	gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
+    vcoord = coord;
+    gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
 }
 
 ";
@@ -410,7 +413,7 @@ out vec4 color;
 uniform sampler2D tex;
 
 void main() {
-	color = texture(tex, vcoord);
+    color = texture(tex, vcoord);
 }
 
 ";

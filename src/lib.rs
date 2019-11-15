@@ -184,7 +184,11 @@ impl State {
 
         if let Some(fps) = &mut model.fps {
             let dt = fps.frame(timestamp);
-            model.info_box.set_inner_text(&format!("{}", fps));
+            model.info_box.set_inner_text(&format!(
+                "{}\n\nbrightness: {}",
+                fps,
+                model.brightness_slider.value()
+            ));
 
             {
                 let mut movement_vector = nalgebra::Vector3::zeros();
@@ -224,7 +228,7 @@ impl State {
                                 &frame_data.left_projection_matrix().unwrap_throw(),
                             ) * nalgebra::MatrixSlice4::from_slice(
                                 &frame_data.left_view_matrix().unwrap_throw(),
-                            ),
+                            ) * model.camera.to_homogeneous(),
                             viewport_start: [0, 0],
                             viewport_size: [
                                 model.canvas.width() as i32 / 2,
@@ -236,7 +240,7 @@ impl State {
                                 &frame_data.right_projection_matrix().unwrap_throw(),
                             ) * nalgebra::MatrixSlice4::from_slice(
                                 &frame_data.right_view_matrix().unwrap_throw(),
-                            ),
+                            ) * model.camera.to_homogeneous(),
                             viewport_start: [model.canvas.width() as i32 / 2, 0],
                             viewport_size: [
                                 model.canvas.width() as i32 / 2,
@@ -319,10 +323,11 @@ impl Model {
         brightness_slider.set_type("range");
         brightness_slider.set_min("0");
         brightness_slider.set_max("20");
-        brightness_slider.set_value("10");
+        brightness_slider.set_value("12");
         body.append_child(&brightness_slider).unwrap_throw();
 
-        let world = sandpile::World::default();
+        let mut world = sandpile::World::default();
+        world.add_sand(vec![([8, 8, 8], 1)]);
 
         let mut renderer = render::Renderer::new(&canvas);
         renderer.set_world_tex(&world.to_color_array());
@@ -340,7 +345,11 @@ impl Model {
             info_box,
             brightness_slider,
 
-            camera: nalgebra::Isometry3::translation(-8.5, -8.5, -10.5),
+            camera: nalgebra::Isometry3::look_at_rh(
+                &nalgebra::Point3::new(9.499, 9.499, 10.499),
+                &nalgebra::Point3::new(8.5, 8.5, 8.5),
+                &nalgebra::Vector3::y(),
+            ),
             world,
         }
     }
