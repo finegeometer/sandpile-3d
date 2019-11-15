@@ -1,0 +1,15 @@
+{
+  "name": "sandpile-3d",
+  "collaborators": [
+    "finegeometer <finegeometer@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "sandpile_3d_bg.wasm",
+    "sandpile_3d.js",
+    "sandpile_3d.d.ts"
+  ],
+  "module": "sandpile_3d.js",
+  "types": "sandpile_3d.d.ts",
+  "sideEffects": "false"
+}
