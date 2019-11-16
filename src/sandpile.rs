@@ -1,28 +1,39 @@
 use super::render::WORLD_SIZE;
 use std::ops::{Index, IndexMut};
 
-pub struct World(pub [u8; WORLD_SIZE * WORLD_SIZE * WORLD_SIZE]);
+pub struct World {
+    data: Vec<u8>,
+    total_grains: usize,
+}
 
 impl Default for World {
     fn default() -> Self {
-        Self([0; WORLD_SIZE * WORLD_SIZE * WORLD_SIZE])
+        Self {
+            data: vec![0; WORLD_SIZE * WORLD_SIZE * WORLD_SIZE],
+            total_grains: 0,
+        }
     }
 }
 
 impl Index<[usize; 3]> for World {
     type Output = u8;
     fn index(&self, idx: [usize; 3]) -> &u8 {
-        &self.0[(idx[0] * WORLD_SIZE + idx[1]) * WORLD_SIZE + idx[2]]
+        &self.data[(idx[0] * WORLD_SIZE + idx[1]) * WORLD_SIZE + idx[2]]
     }
 }
 impl IndexMut<[usize; 3]> for World {
     fn index_mut(&mut self, idx: [usize; 3]) -> &mut u8 {
-        &mut self.0[(idx[0] * WORLD_SIZE + idx[1]) * WORLD_SIZE + idx[2]]
+        &mut self.data[(idx[0] * WORLD_SIZE + idx[1]) * WORLD_SIZE + idx[2]]
     }
 }
 
 impl World {
-    pub fn add_sand(&mut self, mut todo: Vec<([usize; 3], usize)>) {
+    pub fn add_sand(&mut self, num_grains: usize) {
+        self.total_grains += num_grains;
+
+        let mut todo: Vec<([usize; 3], usize)> =
+            vec![([WORLD_SIZE / 2, WORLD_SIZE / 2, WORLD_SIZE / 2], num_grains)];
+
         while let Some((loc, num_grains)) = todo.pop() {
             if loc.iter().all(|&x| 0 < x && x < WORLD_SIZE - 1) {
                 let pile = &mut self[loc];
@@ -43,11 +54,17 @@ impl World {
                         {let mut loc = loc; loc[2] -= 1; (loc, num_topples)},
                     ]);
                 }
+            } else {
+                panic!("Overflow before {}", self.total_grains);
             }
         }
     }
 
     pub fn to_color_array(&self) -> &[u8] {
-        &self.0
+        &self.data
+    }
+
+    pub fn total_grains(&self) -> usize {
+        self.total_grains
     }
 }

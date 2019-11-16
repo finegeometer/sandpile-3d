@@ -4,6 +4,8 @@ mod fps;
 mod render;
 mod sandpile;
 
+use render::WORLD_SIZE;
+
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -36,6 +38,8 @@ struct Model {
     canvas: web_sys::HtmlCanvasElement,
     info_box: web_sys::HtmlParagraphElement,
     brightness_slider: web_sys::HtmlInputElement,
+    opacity_slider: web_sys::HtmlInputElement,
+    color_sliders: [[web_sys::HtmlInputElement; 3]; 5],
 
     camera: nalgebra::Isometry3<f32>,
     world: sandpile::World,
@@ -139,9 +143,29 @@ impl State {
             Msg::KeyDown(k) => {
                 model.keys.insert(k.to_lowercase());
 
-                if k == "Enter" {
-                    model.world.add_sand(vec![([8, 8, 8], 1)]);
-                    model.renderer.set_world_tex(model.world.to_color_array());
+                match &k as &str {
+                    "Enter" => {
+                        model.world.add_sand(1);
+                        model.renderer.set_world_tex(model.world.to_color_array());
+                    }
+                    "k" => {
+                        model.world.add_sand(1_000);
+                        model.renderer.set_world_tex(model.world.to_color_array());
+                    }
+                    "m" => {
+                        model.world.add_sand(1_000_000);
+                        model.renderer.set_world_tex(model.world.to_color_array());
+                    }
+                    "o" => {
+                        let mut isom = nalgebra::Isometry3::translation(
+                            -((WORLD_SIZE / 2) as f32 + 0.5),
+                            -((WORLD_SIZE / 2) as f32 + 0.5),
+                            -((WORLD_SIZE / 2) as f32 + 0.5),
+                        );
+                        isom.append_rotation_mut(&model.camera.rotation);
+                        model.camera = isom;
+                    }
+                    _ => {}
                 }
             }
             Msg::KeyUp(k) => {
@@ -185,9 +209,11 @@ impl State {
         if let Some(fps) = &mut model.fps {
             let dt = fps.frame(timestamp);
             model.info_box.set_inner_text(&format!(
-                "{}\n\nbrightness: {}",
+                "{}\ntotal grains: {}\nbrightness: {}\nopacity: {}% per block",
                 fps,
-                model.brightness_slider.value()
+                model.world.total_grains(),
+                model.brightness_slider.value(),
+                model.opacity_slider.value(),
             ));
 
             {
@@ -264,7 +290,13 @@ impl State {
                 };
                 model.renderer.render(
                     views,
-                    ((model.brightness_slider.value_as_number() as f32 - 17.) * 0.2).exp(),
+                    ((model.brightness_slider.value_as_number() as f32 - 22.) * 0.2).exp(),
+                    model.opacity_slider.value_as_number() as f32 * 0.01,
+                    model
+                        .color_sliders
+                        .iter()
+                        .flatten()
+                        .map(|x| x.value_as_number() as f32 * 0.2),
                 );
 
                 if let VrStatus::Presenting(display) = &model.vr_status {
@@ -299,19 +331,51 @@ impl Model {
         let document = window.document().unwrap_throw();
         let body = document.body().unwrap_throw();
 
+        body.style().set_css_text(
+            r"display: grid;
+grid-gap: 10px;
+background-color: #000000;
+color: #FFFFFF;
+padding: 10px;
+grid-template-areas:
+    'canvas brightness brightness brightness'
+    'canvas opacity    opacity    opacity   '
+    'canvas color_r1   color_g1   color_b1  '
+    'canvas color_r2   color_g2   color_b2  '
+    'canvas color_r3   color_g3   color_b3  '
+    'canvas color_r4   color_g4   color_b4  '
+    'canvas color_r5   color_g5   color_b5  '
+    'info   info       info       info      ';
+
+position: fixed;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+",
+        );
+
         let canvas = document
             .create_element("canvas")
             .unwrap_throw()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap_throw();
-        canvas.set_attribute("width", "1600").unwrap_throw();
-        canvas.set_attribute("height", "800").unwrap_throw();
+        canvas.set_attribute("width", "1200").unwrap_throw();
+        canvas.set_attribute("height", "600").unwrap_throw();
+        canvas
+            .style()
+            .set_property("grid-area", "canvas")
+            .unwrap_throw();
         body.append_child(&canvas).unwrap_throw();
 
         let info_box = document
             .create_element("p")
             .unwrap_throw()
             .dyn_into::<web_sys::HtmlParagraphElement>()
+            .unwrap_throw();
+        info_box
+            .style()
+            .set_property("grid-area", "info")
             .unwrap_throw();
         body.append_child(&info_box).unwrap_throw();
 
@@ -323,14 +387,88 @@ impl Model {
         brightness_slider.set_type("range");
         brightness_slider.set_min("0");
         brightness_slider.set_max("20");
-        brightness_slider.set_value("12");
+        brightness_slider.set_value("20");
+        brightness_slider
+            .style()
+            .set_property("grid-area", "brightness")
+            .unwrap_throw();
         body.append_child(&brightness_slider).unwrap_throw();
 
+        let opacity_slider = document
+            .create_element("input")
+            .unwrap_throw()
+            .dyn_into::<web_sys::HtmlInputElement>()
+            .unwrap_throw();
+        opacity_slider.set_type("range");
+        opacity_slider.set_min("0");
+        opacity_slider.set_max("100");
+        opacity_slider.set_value("0");
+        opacity_slider
+            .style()
+            .set_property("grid-area", "opacity")
+            .unwrap_throw();
+        body.append_child(&opacity_slider).unwrap_throw();
+
         let mut world = sandpile::World::default();
-        world.add_sand(vec![([8, 8, 8], 1)]);
+        world.add_sand(1);
 
         let mut renderer = render::Renderer::new(&canvas);
         renderer.set_world_tex(world.to_color_array());
+
+        let camera = {
+            let x = (WORLD_SIZE / 2) as f32;
+            nalgebra::Isometry3::look_at_rh(
+                &nalgebra::Point3::new(x + 1.499, x + 1.499, x + 2.499),
+                &nalgebra::Point3::new(x + 0.5, x + 0.5, x + 0.5),
+                &nalgebra::Vector3::y(),
+            )
+        };
+
+        let make_slider = |identifier: &str, value: &str| {
+            let slider = document
+                .create_element("input")
+                .unwrap_throw()
+                .dyn_into::<web_sys::HtmlInputElement>()
+                .unwrap_throw();
+            slider.set_type("range");
+            slider.set_min("0");
+            slider.set_max("5");
+            slider.set_value(value);
+            slider
+                .style()
+                .set_property("grid-area", identifier)
+                .unwrap_throw();
+            body.append_child(&slider).unwrap_throw();
+            slider
+        };
+
+        let color_sliders = [
+            [
+                make_slider("color_r1", "0"),
+                make_slider("color_g1", "0"),
+                make_slider("color_b1", "5"),
+            ],
+            [
+                make_slider("color_r2", "0"),
+                make_slider("color_g2", "4"),
+                make_slider("color_b2", "4"),
+            ],
+            [
+                make_slider("color_r3", "0"),
+                make_slider("color_g3", "5"),
+                make_slider("color_b3", "0"),
+            ],
+            [
+                make_slider("color_r4", "4"),
+                make_slider("color_g4", "4"),
+                make_slider("color_b4", "0"),
+            ],
+            [
+                make_slider("color_r5", "5"),
+                make_slider("color_g5", "0"),
+                make_slider("color_b5", "0"),
+            ],
+        ];
 
         Self {
             animation_frame_closure: JsValue::undefined().into(),
@@ -344,12 +482,10 @@ impl Model {
             canvas,
             info_box,
             brightness_slider,
+            opacity_slider,
+            color_sliders,
 
-            camera: nalgebra::Isometry3::look_at_rh(
-                &nalgebra::Point3::new(9.499, 9.499, 10.499),
-                &nalgebra::Point3::new(8.5, 8.5, 8.5),
-                &nalgebra::Vector3::y(),
-            ),
+            camera,
             world,
         }
     }

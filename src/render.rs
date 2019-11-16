@@ -221,7 +221,13 @@ impl Renderer {
             .unwrap_throw();
     }
 
-    pub fn render(&self, views: Vec<View>, brightness: f32) {
+    pub fn render(
+        &self,
+        views: Vec<View>,
+        brightness: f32,
+        opacity: f32,
+        colors: impl IntoIterator<Item = f32>,
+    ) {
         self.gl
             .bind_framebuffer(GL::FRAMEBUFFER, Some(&self.framebuffer));
         self.gl.use_program(Some(&self.program));
@@ -233,6 +239,14 @@ impl Renderer {
                 .get_uniform_location(&self.program, "world")
                 .as_ref(),
             0,
+        );
+
+        #[rustfmt::skip]
+        self.gl.uniform3fv_with_f32_array(
+            self.gl
+                .get_uniform_location(&self.program, "colors")
+                .as_ref(),
+            &[0.0, 0.0, 0.0].iter().copied().chain(colors).collect::<Vec<_>>()
         );
 
         self.gl.clear_color(0., 0., 0., 1.);
@@ -263,6 +277,13 @@ impl Renderer {
                     .get_uniform_location(&self.program, "brightness")
                     .as_ref(),
                 brightness,
+            );
+
+            self.gl.uniform1f(
+                self.gl
+                    .get_uniform_location(&self.program, "opacity")
+                    .as_ref(),
+                opacity,
             );
 
             self.gl.viewport(
@@ -366,37 +387,22 @@ out vec4 color;
 uniform vec3 camera_pos;
 uniform usampler3D world;
 uniform float brightness;
+uniform float opacity;
+uniform vec3 colors[6];
 
-const float world_size = 16.0;
+const float world_size = 128.0;
 
 vec3 get_color(vec3 pos) {
-    uint num_grains = texture(world, pos / world_size).r;
+    return colors[texture(world, pos / world_size).r];
+}
 
-    if (num_grains == uint(0)) {
-        return vec3(0.0, 0.0, 0.0);
+// ∫opacity^x dx
+float light_integral(float dist) {
+    if (opacity == 0.0) {
+        return dist;
+    } else {
+        return (pow(1.0 - opacity, dist) - 1.0) / log(1.0 - opacity);
     }
-
-    if (num_grains == uint(1)) {
-        return vec3(0.0, 0.0, 1.0);
-    }
-
-    if (num_grains == uint(2)) {
-        return vec3(0.0, 0.75, 0.75);
-    }
-
-    if (num_grains == uint(3)) {
-        return vec3(0.0, 1.0, 0.0);
-    }
-
-    if (num_grains == uint(4)) {
-        return vec3(0.75, 0.75, 0.0);
-    }
-
-    if (num_grains == uint(5)) {
-        return vec3(1.0, 0.0, 0.0);
-    }
-
-    return vec3(1.0, 1.0, 1.0);
 }
 
 void main() {
@@ -404,12 +410,12 @@ void main() {
     vec3 near_color = get_color(vpos - n);
     vec3 far_color = get_color(vpos + n);
 
-    color = vec4(near_color - far_color, 0.0) * distance(vpos, camera_pos) * brightness;
+    color = vec4(near_color - far_color, 0.0) * light_integral(distance(vpos, camera_pos)) * brightness;
 }
 ";
 
 // Value separately defined in fragment shader above.
-pub const WORLD_SIZE: usize = 16;
+pub const WORLD_SIZE: usize = 128;
 
 fn as_f32_array(v: &[f32]) -> js_sys::Float32Array {
     let memory_buffer = wasm_bindgen::memory()
