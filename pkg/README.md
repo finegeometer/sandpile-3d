@@ -1,3 +1,4 @@
+# sandpile-3d
 
 3D [Abelian Sandpiles](https://en.wikipedia.org/wiki/Abelian_sandpile_model)
 
@@ -14,7 +15,7 @@ The program will crash if you add more than 3,657,509 grains.
 There are sliders for setting the brightness and opacity.
 There are also sliders for setting the colors representing 1-5 grains.
 
-# Known bugs
+## Known bugs
 
 The `m` button, for adding a million grains, is unacceptably slow.
 

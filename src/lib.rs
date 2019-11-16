@@ -206,13 +206,15 @@ impl State {
                 .unwrap_throw();
         }
 
+        let brightness = model.brightness();
         if let Some(fps) = &mut model.fps {
             let dt = fps.frame(timestamp);
+
             model.info_box.set_inner_text(&format!(
                 "{}\ntotal grains: {}\nbrightness: {}\nopacity: {}% per block",
                 fps,
                 model.world.total_grains(),
-                model.brightness_slider.value(),
+                brightness,
                 model.opacity_slider.value(),
             ));
 
@@ -290,7 +292,7 @@ impl State {
                 };
                 model.renderer.render(
                     views,
-                    ((model.brightness_slider.value_as_number() as f32 - 22.) * 0.2).exp(),
+                    model.brightness(),
                     model.opacity_slider.value_as_number() as f32 * 0.01,
                     model
                         .color_sliders
@@ -488,5 +490,9 @@ bottom: 0;
             camera,
             world,
         }
+    }
+
+    fn brightness(&self) -> f32 {
+        ((self.brightness_slider.value_as_number() as f32 - 22.) * 0.2).exp()
     }
 }
